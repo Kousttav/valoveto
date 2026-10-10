@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api } from '../api.js';
+import { api, BASE } from '../api.js';
 import Coin from '../components/Coin.jsx';
 import Flash from '../components/Flash.jsx';
 import MapCard from '../components/MapCard.jsx';
@@ -9,7 +9,8 @@ export default function Match() {
   const { id, token } = useParams();
   const [m, setM] = useState(null);
   const [you, setYou] = useState(null);
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState('');   // load error (match missing / server down)
+  const [toast, setToast] = useState(''); // action error (not your turn, etc.)
   const [flash, setFlash] = useState(null);
   const lastIdx = useRef(null);
 
@@ -19,7 +20,7 @@ export default function Match() {
     api.getMatch(id, token)
       .then(({ match, you }) => {
         setM(match); setYou(you);
-        es = new EventSource(`/api/matches/${id}/stream`);
+        es = new EventSource(`${BASE}/api/matches/${id}/stream`);
         es.onmessage = (e) => setM(JSON.parse(e.data));
       })
       .catch((e) => setErr(e.message));
@@ -41,9 +42,9 @@ export default function Match() {
   }, [m?.idx]); // eslint-disable-line
 
   if (err) return <div className="card err">{err}</div>;
-  if (!m) return <p className="muted">Loading match…</p>;
+  if (!m) return <p className="muted">Loading match… (if the server was idle this can take up to 30 seconds)</p>;
 
-  const act = (fn) => fn().catch((e) => setErr(e.message));
+  const act = (fn) => fn().catch((e) => { setToast(e.message); setTimeout(() => setToast(''), 4000); });
   const cur = m.steps[m.idx];
   const my = !!you && cur?.team === you;
   const mapOf = (mid) => m.pool.find((p) => p.id === mid);
@@ -60,6 +61,7 @@ export default function Match() {
   return (
     <>
       <Flash event={flash} />
+      {toast && <div className="err-box">{toast}</div>}
       <div className="vs"><span>{m.teamA}</span><i>VS</i><span>{m.teamB}</span></div>
       <p className="muted" style={{ textAlign: 'center' }}>
         {m.modeLabel} · {you ? `You are captain of ${name(m, you)}` : 'Spectator'}

@@ -1,3 +1,6 @@
+// Backend address. Empty in dev (Vite proxy), set via VITE_API_URL in production.
+export const BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
 const adminToken = () => localStorage.getItem('veto_admin') || '';
 
 async function req(path, { method = 'GET', body, form, admin } = {}) {
@@ -6,7 +9,12 @@ async function req(path, { method = 'GET', body, form, admin } = {}) {
   if (form) payload = form;
   else if (body) { headers['Content-Type'] = 'application/json'; payload = JSON.stringify(body); }
   if (admin) headers.Authorization = `Bearer ${adminToken()}`;
-  const res = await fetch(`/api${path}`, { method, headers, body: payload });
+  let res;
+  try {
+    res = await fetch(`${BASE}/api${path}`, { method, headers, body: payload });
+  } catch {
+    throw new Error('Cannot reach the server. If it was idle, wait about 30 seconds for it to wake up and try again.');
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;

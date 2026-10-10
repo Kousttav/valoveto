@@ -20,10 +20,12 @@ export default function Home() {
   const [created, setCreated] = useState(null);
   const [code, setCode] = useState('');
   const [copied, setCopied] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.maps().then((m) => { setMaps(m); setSel(m.filter((x) => x.active).map((x) => x.id)); })
-      .catch((e) => setErr(e.message));
+      .catch((e) => setErr(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
   const toggle = (id) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -54,6 +56,7 @@ export default function Home() {
       <div className="hero">
         <h1 data-t="Map Veto Arena">Map Veto Arena</h1>
         <p className="muted">Toss. Ban. Pick. Lock in your battleground.</p>
+        {loading && <p className="muted">Connecting to the server… (free hosting can take ~30s to wake up)</p>}
       </div>
 
       <div className="card">
